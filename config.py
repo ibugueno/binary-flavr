@@ -36,7 +36,7 @@ learn_arg.add_argument('--start_epoch', type=int, default=0)
 learn_arg.add_argument('--max_epoch', type=int, default=200)
 learn_arg.add_argument('--resume', action='store_true')
 learn_arg.add_argument('--resume_exp', type=str, default=None)
-learn_arg.add_argument('--checkpoint_dir', type=str ,default=".")
+learn_arg.add_argument('--checkpoint_dir', type=str, default="output")
 learn_arg.add_argument("--load_from"  ,type=str , default=None)
 learn_arg.add_argument("--pretrained" , type=str,
                         help="Load from a pretrained model.")
