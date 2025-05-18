@@ -54,6 +54,7 @@ Probado con:
 ### Vimeo-90K (2x interpolación):
 
 ```bash
+wget http://data.csail.mit.edu/tofu/dataset/vimeo_septuplet.zip
 python main_bin.py \
   --batch_size 32 \
   --test_batch_size 32 \
