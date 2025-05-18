@@ -95,8 +95,10 @@ class BinOp():
             else:
                 raise ValueError(f"Unsupported tensor shape: {s}")
 
+            m = m.clone()
             m[weight.lt(-1.0)] = 0
             m[weight.gt(1.0)] = 0
+
             m = m.mul(grad)
 
             # Step 2: compute m_add
