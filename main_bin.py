@@ -91,13 +91,14 @@ def train(args, epoch):
         optimizer.zero_grad()
         bin_op.binarization()
 
-        out = model(images)
-        out = torch.cat(out)
-        gt = torch.cat(gt)
-
-        loss, loss_specific = criterion(out, gt)
         with torch.autograd.set_detect_anomaly(True):
+            out = model(images)
+            out = torch.cat(out)
+            gt = torch.cat(gt)
+
+            loss, loss_specific = criterion(out, gt)
             loss.backward()
+
 
         bin_op.restore()
         bin_op.updateBinaryGradWeight()
