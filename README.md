@@ -78,21 +78,7 @@ python main_bin.py   --batch_size 2   --test_batch_size 2   --dataset vimeo90K_s
 ```
 
 ```bash
-torchrun --nproc_per_node=4 main_bin_ddp.py \
-  --batch_size 2 \
-  --test_batch_size 2 \
-  --dataset vimeo90K_septuplet \
-  --loss 1*L1 \
-  --max_epoch 200 \
-  --lr 0.0002 \
-  --data_root input/vimeo_septuplet/ \
-  --n_outputs 1 \
-  --exp_name binflavr_vimeo2x_nodata_parallel \
-  --checkpoint_dir output \
-  --model unet_18 \
-  --num_workers 2 \
-  --cuda True \
-  --num_gpu 4
+torchrun --nproc_per_node=4 main_bin_ddp.py   --batch_size 12   --test_batch_size 2   --dataset vimeo90K_septuplet   --loss 1*L1   --max_epoch 200   --lr 0.0002   --data_root input/vimeo_septuplet/   --n_outputs 1   --exp_name binflavr_vimeo2x_batch12   --checkpoint_dir output   --model unet_18   --num_workers 2   --cuda True
 ```
 
 

@@ -193,6 +193,7 @@ def test(args, epoch):
             f.write(f'For epoch={epoch}\tPSNR: {psnrs.avg:.4f}, SSIM: {ssims.avg:.4f}\n')
 
 
+
     timestep = epoch + 1
     if writer is not None:
         writer.add_scalar('Loss/test', loss.item(), timestep)
@@ -232,7 +233,7 @@ def main(args):
             }
 
             myutils.save_checkpoint(checkpoint_data, save_loc, is_best, args.exp_name)
-            torch.save(checkpoint_data, os.path.join(save_loc, 'checkpoint_last.pth'))
+            torch.save(checkpoint_data, os.path.join(save_loc, f'checkpoint_epoch_{epoch:03d}.pth'))
             if is_best:
                 torch.save(checkpoint_data, os.path.join(save_loc, 'checkpoint_best.pth'))
 
