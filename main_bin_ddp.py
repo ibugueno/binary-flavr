@@ -19,6 +19,25 @@ from torch.utils.data.distributed import DistributedSampler
 
 import os
 
+import torchvision.utils as vutils
+from torchvision.transforms.functional import to_pil_image
+from PIL import Image
+
+from torchvision.transforms.functional import to_pil_image
+
+def save_sample_images(pred, gt, epoch, save_dir, max_samples=4):
+    """Guarda algunas imágenes del resultado y ground truth"""
+    os.makedirs(save_dir, exist_ok=True)
+    pred = pred.detach().cpu().clamp(0, 1)
+    gt = gt.detach().cpu().clamp(0, 1)
+
+    for i in range(min(max_samples, pred.size(0))):
+        pred_img = to_pil_image(pred[i])
+        gt_img = to_pil_image(gt[i])
+
+        pred_img.save(os.path.join(save_dir, f'epoch{epoch:03d}_sample{i}_pred.png'))
+        gt_img.save(os.path.join(save_dir, f'epoch{epoch:03d}_sample{i}_gt.png'))
+
 # === Helper: Checkpoint loader ===
 def load_checkpoint(args, model, optimizer, path):
     print("Loading checkpoint:", path)
@@ -194,13 +213,14 @@ def test(args, epoch):
 
 
 
+
     timestep = epoch + 1
     if writer is not None:
         writer.add_scalar('Loss/test', loss.item(), timestep)
         writer.add_scalar('PSNR/test', psnrs.avg, timestep)
         writer.add_scalar('SSIM/test', ssims.avg, timestep)
 
-    return losses['total'].avg, psnrs.avg, ssims.avg
+    return losses['total'].avg, psnrs.avg, ssims.avg, out[:4], gt[:4]
 
 
 # === Main Loop ===
@@ -219,11 +239,13 @@ def main(args):
     best_psnr = 0
     for epoch in range(args.start_epoch, args.max_epoch):
         train(args, epoch)
-        test_loss, psnr, _ = test(args, epoch)
+        test_loss, psnr, _, out_sample, gt_sample = test(args, epoch)
 
         is_best = psnr > best_psnr
         best_psnr = max(psnr, best_psnr)
+
         if args.local_rank == 0:
+            # === Guardar checkpoint ===
             checkpoint_data = {
                 'epoch': epoch,
                 'state_dict': model.state_dict(),
@@ -233,12 +255,29 @@ def main(args):
             }
 
             myutils.save_checkpoint(checkpoint_data, save_loc, is_best, args.exp_name)
-            torch.save(checkpoint_data, os.path.join(save_loc, f'checkpoint_epoch_{epoch:03d}.pth'))
+            torch.save(checkpoint_data, os.path.join(save_loc, 'checkpoint_last.pth'))
             if is_best:
                 torch.save(checkpoint_data, os.path.join(save_loc, 'checkpoint_best.pth'))
 
+            # === Guardar métricas en CSV ===
+            metrics_path = os.path.join(save_loc, 'metrics.csv')
+            write_header = not os.path.exists(metrics_path)
+            with open(metrics_path, 'a') as f:
+                if write_header:
+                    f.write("epoch,loss,psnr,ssim\n")
+                f.write(f"{epoch},{test_loss:.6f},{psnr:.4f},{_:.4f}\n")
+
+            # === Guardar imágenes cada 10 epochs o en la última ===
+            if epoch % 1 == 0 or epoch == args.max_epoch - 1:
+                os.makedirs(os.path.join(save_loc, "sample_outputs"), exist_ok=True)
+                for i in range(min(4, out_sample.size(0))):
+                    pred_img = to_pil_image(out_sample[i].cpu().clamp(0, 1))
+                    gt_img = to_pil_image(gt_sample[i].cpu().clamp(0, 1))
+                    pred_img.save(os.path.join(save_loc, "sample_outputs", f"epoch{epoch:03d}_sample{i}_pred.png"))
+                    gt_img.save(os.path.join(save_loc, "sample_outputs", f"epoch{epoch:03d}_sample{i}_gt.png"))
 
         scheduler.step(test_loss)
+
 
 
 if __name__ == "__main__":
