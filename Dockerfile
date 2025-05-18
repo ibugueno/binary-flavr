@@ -26,7 +26,7 @@ RUN pip install -r /tmp/requirements.txt --extra-index-url https://download.pyto
 
 WORKDIR /app
 ADD . /app
-RUN mkdir -p /app/input /app/results
+RUN mkdir -p /app/input /app/output
 
 RUN echo "source /opt/conda/etc/profile.d/conda.sh" >> ~/.bashrc && \
     echo "conda activate bin-flavr" >> ~/.bashrc
