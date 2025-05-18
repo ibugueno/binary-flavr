@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-from .binconv import BinConv3d
 
 class SEGating(nn.Module):
     def __init__(self , inplanes , reduction=16):
@@ -8,9 +7,7 @@ class SEGating(nn.Module):
 
         self.pool = nn.AdaptiveAvgPool3d(1)
         self.attn_layer = nn.Sequential(
-            BinConv3d(in_ch=inplanes, out_ch=inplanes,
-                      kernel_size=1, stride=1, padding=0,
-                      bias=True, batchnorm=False),
+            nn.Conv3d(inplanes, inplanes, kernel_size=1, stride=1, padding=0, bias=True),
             nn.Sigmoid()
         )
 
