@@ -25,6 +25,8 @@ from PIL import Image
 
 from torchvision.transforms.functional import to_pil_image
 
+from tqdm import tqdm
+
 def save_sample_images(pred, gt, epoch, save_dir, max_samples=4):
     """Guarda algunas imágenes del resultado y ground truth"""
     os.makedirs(save_dir, exist_ok=True)
@@ -132,16 +134,16 @@ scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=5)
 
 # === Training ===
 def train(args, epoch):
-
     if args.num_gpu > 1 and hasattr(train_loader.sampler, 'set_epoch'):
         train_loader.sampler.set_epoch(epoch)
-
 
     losses, psnrs, ssims = myutils.init_meters(args.loss)
     model.train()
     criterion.train()
 
-    for i, (images, gt_image) in enumerate(train_loader):
+    progress_bar = tqdm(enumerate(train_loader), total=len(train_loader), desc=f"Epoch {epoch}", ncols=100)
+
+    for i, (images, gt_image) in progress_bar:
         images = [img.cuda() for img in images]
         gt = [g.cuda() for g in gt_image]
 
@@ -156,7 +158,6 @@ def train(args, epoch):
             loss, loss_specific = criterion(out, gt)
             loss.backward()
 
-
         bin_op.restore()
         bin_op.updateBinaryGradWeight()
         optimizer.step()
@@ -168,7 +169,10 @@ def train(args, epoch):
 
         if i % args.log_iter == 0:
             myutils.eval_metrics(out, gt, psnrs, ssims)
-            print(f'Train Epoch: {epoch} [{i}/{len(train_loader)}]\tLoss: {losses["total"].avg:.6f}\tPSNR: {psnrs.avg:.4f}')
+            progress_bar.set_postfix({
+                "Loss": f"{losses['total'].avg:.4f}",
+                "PSNR": f"{psnrs.avg:.2f}"
+            })
 
             timestep = epoch * len(train_loader) + i
             if writer is not None:
@@ -177,9 +181,7 @@ def train(args, epoch):
                 writer.add_scalar('SSIM/train', ssims.avg, timestep)
                 writer.add_scalar('lr', optimizer.param_groups[-1]['lr'], timestep)
 
-
             losses, psnrs, ssims = myutils.init_meters(args.loss)
-
 
 # === Evaluation ===
 def test(args, epoch):
@@ -237,9 +239,17 @@ def main(args):
         model.load_state_dict(model_dict)
 
     best_psnr = 0
+
     for epoch in range(args.start_epoch, args.max_epoch):
+        start_time = time.time()
+
         train(args, epoch)
         test_loss, psnr, _, out_sample, gt_sample = test(args, epoch)
+
+        elapsed = time.time() - start_time
+
+        if args.local_rank == 0:
+            print(f"[Epoch {epoch}] Tiempo total: {elapsed:.2f} segundos")
 
         is_best = psnr > best_psnr
         best_psnr = max(psnr, best_psnr)

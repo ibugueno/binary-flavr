@@ -106,7 +106,7 @@ class UNet_3D_3D(nn.Module):
             BinConv3d(nf[3]*growth, nf[3], kernel_size=3, padding=1, bias=True, batchnorm=batchnorm),
             upConv3D(nf[3]*growth, nf[3], kernel_size=(3,4,4), stride=(1,2,2), padding=(1,1,1), upmode=upmode, batchnorm=batchnorm)
         )
-
+        '''
         self.feature_fuse = BinConv2d(
             in_ch=nf[3]*n_inputs,
             out_ch=nf[3],
@@ -115,12 +115,30 @@ class UNet_3D_3D(nn.Module):
             padding=0,
             batchnorm=batchnorm
         )
+        '''
 
+        self.feature_fuse = nn.Conv2d(
+            nf[3]*n_inputs,
+            nf[3],
+            kernel_size=1,
+            stride=1,
+            padding=0,
+            bias=False
+        )
+
+        '''
         self.outconv = nn.Sequential(
             nn.ReflectionPad2d(3),
             BinConv2d(nf[3], out_channels, kernel_size=7, stride=1, padding=0, batchnorm=False)
         )
+        '''
      
+        self.outconv = nn.Sequential(
+            nn.ReflectionPad2d(3),
+            nn.Conv2d(nf[3], out_channels, kernel_size=7, stride=1, padding=0, bias=False)
+        )
+
+
 
     def forward(self, images):
 

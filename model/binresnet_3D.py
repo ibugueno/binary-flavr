@@ -47,14 +47,24 @@ class BinConv3DSimple(nn.Module):
         else:
             return (stride, stride, stride)
 
-
+'''
 class BasicStem(nn.Sequential):
     def __init__(self):
         super().__init__(
             BinConv3d(3, 64, kernel_size=(3, 7, 7), stride=(1, 2, 2),
                       padding=(1, 3, 3), bias=False, batchnorm=True)
         )
+'''
 
+
+class BasicStem(nn.Sequential):
+    def __init__(self):
+        super().__init__(
+            nn.Conv3d(3, 64, kernel_size=(3, 7, 7), stride=(1, 2, 2),
+                      padding=(1, 3, 3), bias=False),
+            nn.BatchNorm3d(64),
+            nn.ReLU(inplace=True)
+        )
 
 
 class Conv2Plus1D(nn.Sequential):
@@ -131,15 +141,29 @@ class BasicBlock(nn.Module):
         midplanes = (inplanes * planes * 3 * 3 * 3) // (inplanes * 3 * 3 + 3 * planes)
 
         super(BasicBlock, self).__init__()
+        '''
         self.conv1 = nn.Sequential(
             conv_builder(inplanes, planes, midplanes, stride),
             #batchnorm(planes),
             nn.ReLU(inplace=False)
         )
+        
         self.conv2 = nn.Sequential(
             conv_builder(planes, planes, midplanes),
             batchnorm(planes)
         )
+        '''
+        self.conv1 = nn.Sequential(
+            conv_builder(inplanes, planes, midplanes, stride),  # BinConv3d
+            nn.ReLU(inplace=False)
+        )
+
+        self.conv2 = nn.Sequential(
+            nn.Conv3d(planes, planes, kernel_size=3, stride=1, padding=1, bias=False),
+            batchnorm(planes)
+        )
+
+
         self.fg = SEGating(planes) ## Feature Gating
         self.relu = nn.ReLU(inplace=False)
         self.downsample = downsample
@@ -201,6 +225,7 @@ class VideoResNet(nn.Module):
 
         if stride != 1 or self.inplanes != planes * block.expansion:
             ds_stride = conv_builder.get_downsample_stride(stride , temporal_stride)
+            '''
             downsample = nn.Sequential(
                 BinConv3d(
                     in_ch=self.inplanes,
@@ -212,6 +237,21 @@ class VideoResNet(nn.Module):
                     batchnorm=True
                 )
             )
+            '''
+
+            downsample = nn.Sequential(
+                nn.Conv3d(
+                    self.inplanes,
+                    planes * block.expansion,
+                    kernel_size=1,
+                    stride=ds_stride,
+                    padding=0,
+                    bias=False
+                ),
+                nn.BatchNorm3d(planes * block.expansion)
+            )
+
+
             stride = ds_stride
 
         layers = []
