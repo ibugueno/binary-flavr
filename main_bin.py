@@ -74,7 +74,8 @@ bin_op = BinOp(model)
 # === Loss and Optimizer ===
 criterion = Loss(args)
 optimizer = Adam(model.parameters(), lr=args.lr, betas=(args.beta1, args.beta2))
-scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=5, verbose=True)
+#scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=5, verbose=True)
+scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=5)
 
 
 # === Training ===
