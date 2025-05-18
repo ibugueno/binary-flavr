@@ -7,6 +7,7 @@ from torch.utils.tensorboard import SummaryWriter
 from torch.utils.data import DataLoader
 from torch.optim import Adam
 from torch.optim.lr_scheduler import ReduceLROnPlateau
+import torch.nn as nn
 
 import config
 import myutils
@@ -67,7 +68,15 @@ else:
 print("Building model:", args.model.lower())
 model = UNet_3D_3D(args.model.lower(), n_inputs=args.nbr_frame, n_outputs=args.n_outputs, joinType=args.joinType, upmode=args.upmode)
 #model = torch.nn.DataParallel(model).to(device)
-model = model.to(device)
+#model = model.to(device)
+
+if torch.cuda.device_count() > 1:
+    print(f"Using DataParallel on {torch.cuda.device_count()} GPUs")
+    model = nn.DataParallel(model).to(device)
+else:
+    print("Only 1 GPU available, running without DataParallel")
+    model = model.to(device)
+
 
 # === Binarization handler ===
 bin_op = BinOp(model)
