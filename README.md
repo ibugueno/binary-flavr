@@ -69,8 +69,8 @@ python main_bin.py \
   --n_outputs 1 \
   --exp_name binflavr_vimeo2x \
   --checkpoint_dir output \
-  --model unet_18
-
+  --model unet_18 \
+  --num_workers 4 # default: 16
 ```
 
 ### GoPro (8x interpolación):

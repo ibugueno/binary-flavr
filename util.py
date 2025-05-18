@@ -51,15 +51,26 @@ class BinOp():
 
     def binarizeConvParams(self):
         for index in range(self.num_of_params):
-            n = self.target_modules[index].data[0].nelement()
-            s = self.target_modules[index].data.size()
-            if len(s) == 4:
-                m = self.target_modules[index].data.norm(1, 3, keepdim=True)\
-                        .sum(2, keepdim=True).sum(1, keepdim=True).div(n)
-            elif len(s) == 2:
-                m = self.target_modules[index].data.norm(1, 1, keepdim=True).div(n)
-            self.target_modules[index].data = \
-                    self.target_modules[index].data.sign().mul(m.expand(s))
+            w = self.target_modules[index].data
+            s = w.size()
+            n = w[0].nelement()
+
+            if len(s) == 4:  # Conv2d
+                m = w.norm(1, 3, keepdim=True)\
+                    .sum(2, keepdim=True).sum(1, keepdim=True).div(n)
+
+            elif len(s) == 5:  # Conv3d
+                m = w.norm(1, 4, keepdim=True)\
+                    .sum(3, keepdim=True).sum(2, keepdim=True).sum(1, keepdim=True).div(n)
+
+            elif len(s) == 2:  # Linear
+                m = w.norm(1, 1, keepdim=True).div(n)
+
+            else:
+                raise ValueError(f"Unsupported tensor shape: {s}")
+
+            self.target_modules[index].data = w.sign().mul(m.expand_as(w))
+
 
     def restore(self):
         for index in range(self.num_of_params):
@@ -68,21 +79,40 @@ class BinOp():
     def updateBinaryGradWeight(self):
         for index in range(self.num_of_params):
             weight = self.target_modules[index].data
-            n = weight[0].nelement()
+            grad = self.target_modules[index].grad.data
             s = weight.size()
-            if len(s) == 4:
+            n = weight[0].nelement()
+
+            # Step 1: calcula m con gradiente en regiones no saturadas
+            if len(s) == 4:  # Conv2d
                 m = weight.norm(1, 3, keepdim=True)\
                         .sum(2, keepdim=True).sum(1, keepdim=True).div(n).expand(s)
-            elif len(s) == 2:
+            elif len(s) == 5:  # Conv3d
+                m = weight.norm(1, 4, keepdim=True)\
+                        .sum(3, keepdim=True).sum(2, keepdim=True).sum(1, keepdim=True).div(n).expand(s)
+            elif len(s) == 2:  # Linear
                 m = weight.norm(1, 1, keepdim=True).div(n).expand(s)
-            m[weight.lt(-1.0)] = 0 
+            else:
+                raise ValueError(f"Unsupported tensor shape: {s}")
+
+            m[weight.lt(-1.0)] = 0
             m[weight.gt(1.0)] = 0
-            m = m.mul(self.target_modules[index].grad.data)
-            m_add = weight.sign().mul(self.target_modules[index].grad.data)
-            if len(s) == 4:
+            m = m.mul(grad)
+
+            # Step 2: compute m_add
+            m_add = weight.sign().mul(grad)
+
+            if len(s) == 4:  # Conv2d
                 m_add = m_add.sum(3, keepdim=True)\
-                        .sum(2, keepdim=True).sum(1, keepdim=True).div(n).expand(s)
-            elif len(s) == 2:
+                            .sum(2, keepdim=True).sum(1, keepdim=True).div(n).expand(s)
+            elif len(s) == 5:  # Conv3d
+                m_add = m_add.sum(4, keepdim=True)\
+                            .sum(3, keepdim=True).sum(2, keepdim=True).sum(1, keepdim=True).div(n).expand(s)
+            elif len(s) == 2:  # Linear
                 m_add = m_add.sum(1, keepdim=True).div(n).expand(s)
+
             m_add = m_add.mul(weight.sign())
-            self.target_modules[index].grad.data = m.add(m_add).mul(1.0-1.0/s[1]).mul(n)
+
+            # Step 3: final grad update
+            self.target_modules[index].grad.data = m.add(m_add).mul(1.0 - 1.0 / s[1]).mul(n)
+
