@@ -152,7 +152,8 @@ class UNet_3D_3D(nn.Module):
 
         out = torch.split(out, dim=1, split_size_or_sections=3)
         mean_ = mean_.squeeze(2)
-        out = [o+mean_ for o in out]
- 
+        out = [o.clone() + mean_ for o in out]
+
+
         return out
 

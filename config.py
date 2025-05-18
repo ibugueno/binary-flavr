@@ -57,6 +57,8 @@ def get_args():
     """Parses all of the arguments above
     """
     args, unparsed = parser.parse_known_args()
+    args.cuda = str(args.cuda).lower() != "false"
+
     if args.num_gpu > 0:
         setattr(args, 'cuda', True)
     else:
