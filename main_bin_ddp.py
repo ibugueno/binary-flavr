@@ -15,6 +15,7 @@ from loss import Loss
 from model.binFLAVR_arch import UNet_3D_3D
 from util import BinOp
 
+from torch.utils.data.distributed import DistributedSampler
 
 # === Helper: Checkpoint loader ===
 def load_checkpoint(args, model, optimizer, path):
@@ -32,7 +33,13 @@ def load_checkpoint(args, model, optimizer, path):
 args, unparsed = config.get_args()
 print(args)
 
-device = torch.device('cuda' if args.cuda else 'cpu')
+if args.num_gpu > 1:
+    torch.distributed.init_process_group(backend="nccl")
+    torch.cuda.set_device(args.local_rank)
+    device = torch.device(f"cuda:{args.local_rank}")
+else:
+    device = torch.device('cuda' if args.cuda else 'cpu')
+
 torch.manual_seed(args.random_seed)
 if args.cuda:
     torch.cuda.manual_seed(args.random_seed)
@@ -48,20 +55,29 @@ with open(os.path.join(save_loc, "opts.txt"), "w") as fh:
     fh.write(str(args))
 
 writer_loc = os.path.join(args.checkpoint_dir, f'tensorboard_logs_{args.dataset}_final', args.exp_name)
-writer = SummaryWriter(writer_loc)
+writer = SummaryWriter(writer_loc) if args.local_rank == 0 else None
 
 
 # === Load Dataset ===
 if args.dataset == "vimeo90K_septuplet":
     from dataset.vimeo90k_septuplet import get_loader
-    train_loader = get_loader('train', args.data_root, args.batch_size, shuffle=True, num_workers=args.num_workers)
+    train_dataset = get_loader('train', args.data_root, args.batch_size, shuffle=False, num_workers=args.num_workers, return_dataset=True)
     test_loader = get_loader('test', args.data_root, args.test_batch_size, shuffle=False, num_workers=args.num_workers)
 elif args.dataset == "gopro":
     from dataset.GoPro import get_loader
-    train_loader = get_loader(args.data_root, args.batch_size, shuffle=True, num_workers=args.num_workers, test_mode=False, interFrames=args.n_outputs, n_inputs=args.nbr_frame)
+    train_dataset = get_loader(args.data_root, args.batch_size, shuffle=False, num_workers=args.num_workers, test_mode=False, interFrames=args.n_outputs, n_inputs=args.nbr_frame, return_dataset=True)
     test_loader = get_loader(args.data_root, args.batch_size, shuffle=False, num_workers=args.num_workers, test_mode=True, interFrames=args.n_outputs, n_inputs=args.nbr_frame)
 else:
     raise NotImplementedError
+
+if args.num_gpu > 1:
+    train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
+    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, sampler=train_sampler, num_workers=args.num_workers)
+else:
+    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
+
+
+
 
 
 # === Build Model ===
@@ -70,12 +86,15 @@ model = UNet_3D_3D(args.model.lower(), n_inputs=args.nbr_frame, n_outputs=args.n
 #model = torch.nn.DataParallel(model).to(device)
 #model = model.to(device)
 
+model = model.to(device)
+
 if args.num_gpu > 1:
-    print(f"Using DataParallel on {torch.cuda.device_count()} GPUs")
-    model = nn.DataParallel(model).to(device)
+    print(f"Using DistributedDataParallel on {args.num_gpu} GPUs")
+    model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
+    model = nn.parallel.DistributedDataParallel(model, device_ids=[args.local_rank], output_device=args.local_rank)
 else:
-    print("Only 1 GPU available, running without DataParallel")
-    model = model.to(device)
+    print("Only 1 GPU available, running without DistributedDataParallel")
+
 
 
 # === Binarization handler ===
@@ -90,6 +109,11 @@ scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=5)
 
 # === Training ===
 def train(args, epoch):
+
+    if args.num_gpu > 1 and hasattr(train_loader.sampler, 'set_epoch'):
+        train_loader.sampler.set_epoch(epoch)
+
+
     losses, psnrs, ssims = myutils.init_meters(args.loss)
     model.train()
     criterion.train()
@@ -124,10 +148,12 @@ def train(args, epoch):
             print(f'Train Epoch: {epoch} [{i}/{len(train_loader)}]\tLoss: {losses["total"].avg:.6f}\tPSNR: {psnrs.avg:.4f}')
 
             timestep = epoch * len(train_loader) + i
-            writer.add_scalar('Loss/train', loss.item(), timestep)
-            writer.add_scalar('PSNR/train', psnrs.avg, timestep)
-            writer.add_scalar('SSIM/train', ssims.avg, timestep)
-            writer.add_scalar('lr', optimizer.param_groups[-1]['lr'], timestep)
+            if writer is not None:
+                writer.add_scalar('Loss/train', loss.item(), timestep)
+                writer.add_scalar('PSNR/train', psnrs.avg, timestep)
+                writer.add_scalar('SSIM/train', ssims.avg, timestep)
+                writer.add_scalar('lr', optimizer.param_groups[-1]['lr'], timestep)
+
 
             losses, psnrs, ssims = myutils.init_meters(args.loss)
 
@@ -158,13 +184,16 @@ def test(args, epoch):
 
     print(f"Loss: {losses['total'].avg:.4f}, PSNR: {psnrs.avg:.4f}, SSIM: {ssims.avg:.4f}\n")
 
-    with open(os.path.join(save_loc, 'results.txt'), 'a') as f:
-        f.write(f'For epoch={epoch}\tPSNR: {psnrs.avg:.4f}, SSIM: {ssims.avg:.4f}\n')
+    if args.local_rank == 0:
+        with open(os.path.join(save_loc, 'results.txt'), 'a') as f:
+            f.write(f'For epoch={epoch}\tPSNR: {psnrs.avg:.4f}, SSIM: {ssims.avg:.4f}\n')
+
 
     timestep = epoch + 1
-    writer.add_scalar('Loss/test', loss.item(), timestep)
-    writer.add_scalar('PSNR/test', psnrs.avg, timestep)
-    writer.add_scalar('SSIM/test', ssims.avg, timestep)
+    if writer is not None:
+        writer.add_scalar('Loss/test', loss.item(), timestep)
+        writer.add_scalar('PSNR/test', psnrs.avg, timestep)
+        writer.add_scalar('SSIM/test', ssims.avg, timestep)
 
     return losses['total'].avg, psnrs.avg, ssims.avg
 
@@ -189,13 +218,14 @@ def main(args):
 
         is_best = psnr > best_psnr
         best_psnr = max(psnr, best_psnr)
-        myutils.save_checkpoint({
-            'epoch': epoch,
-            'state_dict': model.state_dict(),
-            'optimizer': optimizer.state_dict(),
-            'best_psnr': best_psnr,
-            'lr': optimizer.param_groups[-1]['lr']
-        }, save_loc, is_best, args.exp_name)
+        if args.local_rank == 0:
+            myutils.save_checkpoint({
+                'epoch': epoch,
+                'state_dict': model.state_dict(),
+                'optimizer': optimizer.state_dict(),
+                'best_psnr': best_psnr,
+                'lr': optimizer.param_groups[-1]['lr']
+            }, save_loc, is_best, args.exp_name)
 
         scheduler.step(test_loss)
 

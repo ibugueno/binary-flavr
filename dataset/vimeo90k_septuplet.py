@@ -86,13 +86,16 @@ class VimeoSepTuplet(Dataset):
         else:
             return len(self.testlist)
 
-def get_loader(mode, data_root, batch_size, shuffle, num_workers, test_mode=None):
+def get_loader(mode, data_root, batch_size, shuffle, num_workers, test_mode=None, return_dataset=False):
     if mode == 'train':
         is_training = True
     else:
         is_training = False
     dataset = VimeoSepTuplet(data_root, is_training=is_training)
+    if return_dataset:
+        return dataset
     return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers, pin_memory=True)
+
 
 
 if __name__ == "__main__":

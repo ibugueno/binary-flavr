@@ -1,4 +1,5 @@
 import argparse
+import torch
 
 arg_lists = []
 parser = argparse.ArgumentParser()
@@ -52,17 +53,17 @@ misc_arg.add_argument('--random_seed', type=int, default=12345)
 misc_arg.add_argument('--num_workers', type=int, default=16)
 misc_arg.add_argument('--use_tensorboard', action='store_true')
 misc_arg.add_argument('--val_freq', type=int, default=1)
+misc_arg.add_argument('--local_rank', type=int, default=0, help='Local rank for DistributedDataParallel')
 
 def get_args():
-    """Parses all of the arguments above
-    """
+    """Parses all of the arguments above"""
     args, unparsed = parser.parse_known_args()
-    args.cuda = str(args.cuda).lower() != "false"
 
-    if args.num_gpu > 0:
-        setattr(args, 'cuda', True)
-    else:
-        setattr(args, 'cuda', False)
-    if len(unparsed) > 1:
-        print("Unparsed args: {}".format(unparsed))
+    # Detectar automáticamente el número de GPUs
+    args.num_gpu = torch.cuda.device_count()
+    args.cuda = args.num_gpu > 0
+
+    if len(unparsed) > 0:
+        print("Unparsed args:", unparsed)
+
     return args, unparsed

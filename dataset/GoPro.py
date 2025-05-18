@@ -59,15 +59,16 @@ class GoPro(Dataset):
 
         return len(self.file_list)
 
-def get_loader(data_root, batch_size, shuffle, num_workers, test_mode=True, interFrames=3, n_inputs=4):
-
-    if test_mode:
-        mode = "test"
-    else:
-        mode = "train"
-
-    dataset = GoPro(data_root , mode, interFrames=interFrames, n_inputs=n_inputs)
+def get_loader(data_root, batch_size, shuffle, num_workers, test_mode=True, interFrames=3, n_inputs=4, return_dataset=False):
+    mode = "test" if test_mode else "train"
+    dataset = GoPro(data_root, mode, interFrames=interFrames, n_inputs=n_inputs)
+    
+    if return_dataset:
+        return dataset
+    
     return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers, pin_memory=True)
+
+
 
 if __name__ == "__main__":
 
