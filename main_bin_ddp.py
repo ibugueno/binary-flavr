@@ -95,9 +95,9 @@ else:
 
 if args.num_gpu > 1:
     train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
-    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, sampler=train_sampler, num_workers=args.num_workers)
+    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, sampler=train_sampler, num_workers=args.num_workers, pin_memory=True)
 else:
-    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
+    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers, pin_memory=True)
 
 
 
@@ -148,7 +148,8 @@ def train(args, epoch):
         optimizer.zero_grad()
         bin_op.binarization()
 
-        with torch.autograd.set_detect_anomaly(True):
+        #with torch.autograd.set_detect_anomaly(True):
+        with torch.autograd.enable_grad():
             out = model(images)
             out = torch.cat(out)
             gt = torch.cat(gt)
