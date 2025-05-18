@@ -8,6 +8,7 @@ import torch.nn.functional as F
 from .resnet_3D import SEGating
 
 from binconv import BinConv2d
+from binconv import BinConv3d
 
 
 def joinTensors(X1 , X2 , type="concat"):
@@ -19,22 +20,6 @@ def joinTensors(X1 , X2 , type="concat"):
     else:
         return X1
 
-
-class Conv_2d(nn.Module):
-
-    def __init__(self, in_ch, out_ch, kernel_size, stride=1, padding=0, bias=False, batchnorm=False):
-
-        super().__init__()
-        self.conv = [nn.Conv2d(in_ch, out_ch, kernel_size=kernel_size, stride=stride, padding=padding, bias=bias)]
-
-        if batchnorm:
-            self.conv += [nn.BatchNorm2d(out_ch)]
-
-        self.conv = nn.Sequential(*self.conv)
-
-    def forward(self, x):
-
-        return self.conv(x)
 
 class upConv3D(nn.Module):
 
@@ -68,23 +53,7 @@ class upConv3D(nn.Module):
 
         return self.upconv(x)
 
-class Conv_3d(nn.Module):
 
-    def __init__(self, in_ch, out_ch, kernel_size, stride=1, padding=0, bias=True, batchnorm=False):
-
-        super().__init__()
-        self.conv = [nn.Conv3d(in_ch, out_ch, kernel_size=kernel_size, stride=stride, padding=padding, bias=bias),
-                    SEGating(out_ch)
-                    ]
-
-        if batchnorm:
-            self.conv += [nn.BatchNorm3d(out_ch)]
-
-        self.conv = nn.Sequential(*self.conv)
-
-    def forward(self, x):
-
-        return self.conv(x)
 
 class upConv2D(nn.Module):
 
@@ -131,14 +100,21 @@ class UNet_3D_3D(nn.Module):
         self.encoder = getattr(unet_3D , block)(pretrained=False , bn=batchnorm)            
 
         self.decoder = nn.Sequential(
-            Conv_3d(nf[0], nf[1] , kernel_size=3, padding=1, bias=True, batchnorm=batchnorm),
-            upConv3D(nf[1]*growth, nf[2], kernel_size=(3,4,4), stride=(1,2,2), padding=(1,1,1) , upmode=upmode, batchnorm=batchnorm),
-            upConv3D(nf[2]*growth, nf[3], kernel_size=(3,4,4), stride=(1,2,2), padding=(1,1,1) , upmode=upmode, batchnorm=batchnorm),
-            Conv_3d(nf[3]*growth, nf[3] , kernel_size=3, padding=1, bias=True, batchnorm=batchnorm),
-            upConv3D(nf[3]*growth , nf[3], kernel_size=(3,4,4), stride=(1,2,2), padding=(1,1,1) , upmode=upmode, batchnorm=batchnorm)
+            BinConv3d(nf[0], nf[1], kernel_size=3, padding=1, bias=True, batchnorm=batchnorm),
+            upConv3D(nf[1]*growth, nf[2], kernel_size=(3,4,4), stride=(1,2,2), padding=(1,1,1), upmode=upmode, batchnorm=batchnorm),
+            upConv3D(nf[2]*growth, nf[3], kernel_size=(3,4,4), stride=(1,2,2), padding=(1,1,1), upmode=upmode, batchnorm=batchnorm),
+            BinConv3d(nf[3]*growth, nf[3], kernel_size=3, padding=1, bias=True, batchnorm=batchnorm),
+            upConv3D(nf[3]*growth, nf[3], kernel_size=(3,4,4), stride=(1,2,2), padding=(1,1,1), upmode=upmode, batchnorm=batchnorm)
         )
 
-        self.feature_fuse = Conv_2d(nf[3]*n_inputs , nf[3] , kernel_size=1 , stride=1, batchnorm=batchnorm)
+        self.feature_fuse = BinConv2d(
+            in_ch=nf[3]*n_inputs,
+            out_ch=nf[3],
+            kernel_size=1,
+            stride=1,
+            padding=0,
+            batchnorm=batchnorm
+        )
 
         self.outconv = nn.Sequential(
             nn.ReflectionPad2d(3),
