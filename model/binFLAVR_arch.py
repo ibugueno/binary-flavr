@@ -92,7 +92,7 @@ class UNet_3D_3D(nn.Module):
         self.n_outputs = n_outputs
 
         growth = 2 if joinType == "concat" else 1
-        self.lrelu = nn.LeakyReLU(0.2, True)
+        self.lrelu = nn.LeakyReLU(0.2, inplace=False)
 
         unet_3D = importlib.import_module(".binresnet_3D", "model")
         if n_outputs > 1:
