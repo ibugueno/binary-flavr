@@ -3,6 +3,7 @@
 import torch
 import torch.nn as nn
 from .binconv import BinConv3d, BinActive
+from .segating import SEGating
 from torch.hub import load_state_dict_from_url
 
 __all__ = ['unet_18', 'unet_34']
