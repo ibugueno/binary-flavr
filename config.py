@@ -1,5 +1,6 @@
 import argparse
 import torch
+import os
 
 arg_lists = []
 parser = argparse.ArgumentParser()
@@ -58,6 +59,8 @@ misc_arg.add_argument('--val_freq', type=int, default=1)
 def get_args():
     """Parses all of the arguments above"""
     args, unparsed = parser.parse_known_args()
+    args.local_rank = int(os.environ.get("LOCAL_RANK", args.local_rank))
+
 
     # ¡NO SOBRESCRIBAS local_rank!
     # Detectar automáticamente número de GPUs
