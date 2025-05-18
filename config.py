@@ -4,6 +4,10 @@ import torch
 arg_lists = []
 parser = argparse.ArgumentParser()
 
+parser.add_argument('--local_rank', type=int, default=-1, help='Local rank passed by torchrun')
+parser.add_argument('--cuda', type=bool, default=True, help='Use CUDA')
+
+
 def add_argument_group(name):
     arg = parser.add_argument_group(name)
     arg_lists.append(arg)
@@ -40,7 +44,6 @@ learn_arg.add_argument('--checkpoint_dir', type=str, default="output")
 learn_arg.add_argument("--load_from"  ,type=str , default=None)
 learn_arg.add_argument("--pretrained" , type=str,
                         help="Load from a pretrained model.")
-learn_arg.add_argument('--cuda', type=bool, default=True, help='Use CUDA')
 
 
 # Misc
