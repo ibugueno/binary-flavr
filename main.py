@@ -71,7 +71,7 @@ criterion = Loss(args)
 ## ToDo: Different learning rate schemes for different parameters
 from torch.optim import Adam
 optimizer = Adam(model.parameters(), lr=args.lr, betas=(args.beta1, args.beta2))
-scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=5, verbose=True)
+scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=5)
 
 def train(args, epoch):
     losses, psnrs, ssims = myutils.init_meters(args.loss)
