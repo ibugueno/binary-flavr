@@ -223,13 +223,19 @@ def main(args):
         is_best = psnr > best_psnr
         best_psnr = max(psnr, best_psnr)
         if args.local_rank == 0:
-            myutils.save_checkpoint({
+            checkpoint_data = {
                 'epoch': epoch,
                 'state_dict': model.state_dict(),
                 'optimizer': optimizer.state_dict(),
                 'best_psnr': best_psnr,
                 'lr': optimizer.param_groups[-1]['lr']
-            }, save_loc, is_best, args.exp_name)
+            }
+
+            myutils.save_checkpoint(checkpoint_data, save_loc, is_best, args.exp_name)
+            torch.save(checkpoint_data, os.path.join(save_loc, 'checkpoint_last.pth'))
+            if is_best:
+                torch.save(checkpoint_data, os.path.join(save_loc, 'checkpoint_best.pth'))
+
 
         scheduler.step(test_loss)
 
