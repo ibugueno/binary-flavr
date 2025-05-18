@@ -45,7 +45,6 @@ learn_arg.add_argument("--load_from"  ,type=str , default=None)
 learn_arg.add_argument("--pretrained" , type=str,
                         help="Load from a pretrained model.")
 
-
 # Misc
 misc_arg = add_argument_group('Misc')
 misc_arg.add_argument('--exp_name', type=str, default='exp')
@@ -55,7 +54,6 @@ misc_arg.add_argument('--random_seed', type=int, default=12345)
 misc_arg.add_argument('--num_workers', type=int, default=16)
 misc_arg.add_argument('--use_tensorboard', action='store_true')
 misc_arg.add_argument('--val_freq', type=int, default=1)
-misc_arg.add_argument('--local_rank', type=int, default=0, help='Local rank for DistributedDataParallel')
 
 def get_args():
     """Parses all of the arguments above"""
