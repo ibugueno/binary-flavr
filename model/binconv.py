@@ -2,7 +2,7 @@ from __future__ import print_function
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from binresnet_3D import SEGating
+from .binresnet_3D import SEGating
 
 class BinActive(torch.autograd.Function):
     '''

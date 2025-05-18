@@ -55,6 +55,9 @@ Probado con:
 
 ```bash
 wget http://data.csail.mit.edu/tofu/dataset/vimeo_septuplet.zip
+```
+
+```bash
 python main_bin.py \
   --batch_size 32 \
   --test_batch_size 32 \
@@ -62,9 +65,12 @@ python main_bin.py \
   --loss 1*L1 \
   --max_epoch 200 \
   --lr 0.0002 \
-  --data_root <ruta_a_vimeo90K> \
+  --data_root input/vimeo_septuplet/ \
   --n_outputs 1 \
-  --exp_name binflavr_vimeo2x
+  --exp_name binflavr_vimeo2x \
+  --checkpoint_dir output \
+  --model unet_18
+
 ```
 
 ### GoPro (8x interpolación):
