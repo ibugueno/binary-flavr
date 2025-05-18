@@ -134,14 +134,14 @@ class BasicBlock(nn.Module):
         self.conv1 = nn.Sequential(
             conv_builder(inplanes, planes, midplanes, stride),
             #batchnorm(planes),
-            nn.ReLU(inplace=True)
+            nn.ReLU(inplace=False)
         )
         self.conv2 = nn.Sequential(
             conv_builder(planes, planes, midplanes),
             batchnorm(planes)
         )
         self.fg = SEGating(planes) ## Feature Gating
-        self.relu = nn.ReLU(inplace=True)
+        self.relu = nn.ReLU(inplace=False)
         self.downsample = downsample
         self.stride = stride
 

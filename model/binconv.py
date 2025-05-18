@@ -37,7 +37,7 @@ class BinConv2d(nn.Module):
                               padding=padding,
                               bias=bias)
         layers.append(self.conv)
-        layers.append(nn.ReLU(inplace=True))
+        layers.append(nn.ReLU(inplace=False))
 
         self.main = nn.Sequential(*layers)
         self.do_bn = batchnorm
@@ -64,7 +64,7 @@ class BinConv3d(nn.Module):
                               bias=bias)
         layers.append(self.conv)
         layers.append(SEGating(out_ch))
-        layers.append(nn.ReLU(inplace=True))
+        layers.append(nn.ReLU(inplace=False))
 
         self.main = nn.Sequential(*layers)
         self.do_bn = batchnorm
@@ -89,7 +89,7 @@ class BinConvTranspose2d(nn.Module):
                                        padding=padding,
                                        bias=bias)
         layers.append(self.conv)
-        layers.append(nn.ReLU(inplace=True))
+        layers.append(nn.ReLU(inplace=False))
 
         self.main = nn.Sequential(*layers)
         self.do_bn = batchnorm
@@ -116,7 +116,7 @@ class BinConvTranspose3d(nn.Module):
                                        bias=bias)
         layers.append(self.conv)
         layers.append(SEGating(out_ch))
-        layers.append(nn.ReLU(inplace=True))
+        layers.append(nn.ReLU(inplace=False))
 
         self.main = nn.Sequential(*layers)
         self.do_bn = batchnorm
