@@ -6,7 +6,7 @@ class BinOp():
         # count the number of Conv2d and Linear
         count_targets = 0
         for m in model.modules():
-            if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
+            if isinstance(m, (nn.Conv2d, nn.Conv3d, nn.Linear)):
                 count_targets = count_targets + 1
 
         start_range = 1
@@ -19,7 +19,7 @@ class BinOp():
         self.target_modules = []
         index = -1
         for m in model.modules():
-            if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
+            if isinstance(m, (nn.Conv2d, nn.Conv3d, nn.Linear)):
                 index = index + 1
                 if index in self.bin_range:
                     tmp = m.weight.data.clone()

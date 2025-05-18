@@ -57,50 +57,49 @@ class BasicStem(nn.Sequential):
 
 
 class Conv2Plus1D(nn.Sequential):
-
     def __init__(self,
                  in_planes,
                  out_planes,
                  midplanes,
                  stride=1,
-                 padding=1):
-        if not isinstance(stride , int):
-            temporal_stride , stride , stride = stride
+                 padding=1,
+                 batchnorm=True):  # Añadir control de batchnorm
+        if not isinstance(stride, int):
+            temporal_stride, stride, _ = stride
         else:
             temporal_stride = stride
 
-        super(Conv2Plus1D, self).__init__(
-            nn.Conv3d(in_planes, midplanes, kernel_size=(1, 3, 3),
+        super().__init__(
+            BinConv3d(in_planes, midplanes, kernel_size=(1, 3, 3),
                       stride=(1, stride, stride), padding=(0, padding, padding),
-                      bias=False),
-            # batchnorm(midplanes),
-            nn.ReLU(inplace=True),
-            nn.Conv3d(midplanes, out_planes, kernel_size=(3, 1, 1),
+                      bias=False, batchnorm=batchnorm),
+            BinConv3d(midplanes, out_planes, kernel_size=(3, 1, 1),
                       stride=(temporal_stride, 1, 1), padding=(padding, 0, 0),
-                      bias=False))
+                      bias=False, batchnorm=batchnorm)
+        )
 
     @staticmethod
-    def get_downsample_stride(stride , temporal_stride):
+    def get_downsample_stride(stride, temporal_stride):
         if temporal_stride:
             return (temporal_stride, stride, stride)
         else:
-            return (stride , stride , stride)
+            return (stride, stride, stride)
+
+
+
 
 class R2Plus1dStem(nn.Sequential):
-    """R(2+1)D stem is different than the default one as it uses separated 3D convolution
-    """
+    """Binarized R(2+1)D stem"""
     def __init__(self):
         super().__init__(
-            nn.Conv3d(3, 45, kernel_size=(1, 7, 7),
+            BinConv3d(3, 45, kernel_size=(1, 7, 7),
                       stride=(1, 2, 2), padding=(0, 3, 3),
-                      bias=False),
-            batchnorm(45),
-            nn.ReLU(inplace=True),
-            nn.Conv3d(45, 64, kernel_size=(3, 1, 1),
+                      bias=False, batchnorm=True),
+            BinConv3d(45, 64, kernel_size=(3, 1, 1),
                       stride=(1, 1, 1), padding=(1, 0, 0),
-                      bias=False),
-            batchnorm(64),
-            nn.ReLU(inplace=True))
+                      bias=False, batchnorm=True)
+        )
+
 
 
 class SEGating(nn.Module):
@@ -111,7 +110,9 @@ class SEGating(nn.Module):
 
         self.pool = nn.AdaptiveAvgPool3d(1)
         self.attn_layer = nn.Sequential(
-            nn.Conv3d(inplanes , inplanes , kernel_size=1 , stride=1 , bias=True),
+            BinConv3d(in_ch=inplanes, out_ch=inplanes,
+                    kernel_size=1, stride=1, padding=0,
+                    bias=True, batchnorm=False),
             nn.Sigmoid()
         )
         
@@ -131,7 +132,7 @@ class BasicBlock(nn.Module):
         super(BasicBlock, self).__init__()
         self.conv1 = nn.Sequential(
             conv_builder(inplanes, planes, midplanes, stride),
-            batchnorm(planes),
+            #batchnorm(planes),
             nn.ReLU(inplace=True)
         )
         self.conv2 = nn.Sequential(
@@ -200,9 +201,15 @@ class VideoResNet(nn.Module):
         if stride != 1 or self.inplanes != planes * block.expansion:
             ds_stride = conv_builder.get_downsample_stride(stride , temporal_stride)
             downsample = nn.Sequential(
-                nn.Conv3d(self.inplanes, planes * block.expansion,
-                          kernel_size=1, stride=ds_stride, bias=False),
-                batchnorm(planes * block.expansion)
+                BinConv3d(
+                    in_ch=self.inplanes,
+                    out_ch=planes * block.expansion,
+                    kernel_size=1,
+                    stride=ds_stride,
+                    padding=0,
+                    bias=False,
+                    batchnorm=True
+                )
             )
             stride = ds_stride
 

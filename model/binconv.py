@@ -2,7 +2,7 @@ from __future__ import print_function
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from resnet_3D import SEGating
+from binresnet_3D import SEGating
 
 class BinActive(torch.autograd.Function):
     '''
@@ -11,7 +11,6 @@ class BinActive(torch.autograd.Function):
     @staticmethod
     def forward(self, input):
         self.save_for_backward(input)
-        size = input.size()
         input = input.sign()
         return input
 
@@ -75,3 +74,54 @@ class BinConv3d(nn.Module):
         x = BinActive.apply(x)
         return self.main(x)
 
+class BinConvTranspose2d(nn.Module):
+    def __init__(self, in_ch, out_ch, kernel_size, stride=1, padding=0,
+                 bias=False, batchnorm=False):
+        super(BinConvTranspose2d, self).__init__()
+
+        layers = []
+        if batchnorm:
+            layers.append(nn.BatchNorm2d(in_ch, eps=1e-4, momentum=0.1, affine=True))
+
+        self.conv = nn.ConvTranspose2d(in_ch, out_ch,
+                                       kernel_size=kernel_size,
+                                       stride=stride,
+                                       padding=padding,
+                                       bias=bias)
+        layers.append(self.conv)
+        layers.append(nn.ReLU(inplace=True))
+
+        self.main = nn.Sequential(*layers)
+        self.do_bn = batchnorm
+        self.weight = self.conv.weight
+
+    def forward(self, x):
+        x = BinActive.apply(x)
+        return self.main(x)
+
+
+class BinConvTranspose3d(nn.Module):
+    def __init__(self, in_ch, out_ch, kernel_size, stride=1, padding=0,
+                 bias=False, batchnorm=False):
+        super(BinConvTranspose3d, self).__init__()
+
+        layers = []
+        if batchnorm:
+            layers.append(nn.BatchNorm3d(in_ch, eps=1e-4, momentum=0.1, affine=True))
+
+        self.conv = nn.ConvTranspose3d(in_ch, out_ch,
+                                       kernel_size=kernel_size,
+                                       stride=stride,
+                                       padding=padding,
+                                       bias=bias)
+        layers.append(self.conv)
+        layers.append(SEGating(out_ch))
+        layers.append(nn.ReLU(inplace=True))
+
+        self.main = nn.Sequential(*layers)
+        self.do_bn = batchnorm
+        self.weight = self.conv.weight
+
+    def forward(self, x):
+        x = BinActive.apply(x)
+        return self.main(x)

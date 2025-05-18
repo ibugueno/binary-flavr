@@ -5,10 +5,10 @@ import importlib
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from .resnet_3D import SEGating
+from .binresnet_3D import SEGating
 
-from binconv import BinConv2d
-from binconv import BinConv3d
+from binconv import BinConv2d, BinConv3d
+from binconv import BinConvTranspose2d, BinConvTranspose3d
 
 
 def joinTensors(X1 , X2 , type="concat"):
@@ -29,20 +29,18 @@ class upConv3D(nn.Module):
 
         self.upmode = upmode
 
-        if self.upmode=="transpose":
-            self.upconv = nn.ModuleList(
-                [nn.ConvTranspose3d(in_ch, out_ch, kernel_size=kernel_size, stride=stride, padding=padding),
+        if self.upmode == "transpose":
+            self.upconv = nn.ModuleList([
+                BinConvTranspose3d(in_ch, out_ch, kernel_size=kernel_size, stride=stride, padding=padding, bias=False, batchnorm=batchnorm),
                 SEGating(out_ch)
-                ]
-            )
+            ])
 
         else:
-            self.upconv = nn.ModuleList(
-                [nn.Upsample(mode='trilinear', scale_factor=(1,2,2), align_corners=False),
-                nn.Conv3d(in_ch, out_ch , kernel_size=1 , stride=1),
+            self.upconv = nn.ModuleList([
+                nn.Upsample(mode='trilinear', scale_factor=(1, 2, 2), align_corners=False),
+                BinConv3d(in_ch, out_ch, kernel_size=1, stride=1, padding=0, bias=False, batchnorm=batchnorm),
                 SEGating(out_ch)
-                ]
-            )
+            ])
 
         if batchnorm:
             self.upconv += [nn.BatchNorm3d(out_ch)]
@@ -63,14 +61,16 @@ class upConv2D(nn.Module):
 
         self.upmode = upmode
 
-        if self.upmode=="transpose":
-            self.upconv = [nn.ConvTranspose2d(in_ch, out_ch, kernel_size=kernel_size, stride=stride, padding=padding)]
+        if self.upmode == "transpose":
+            self.upconv = [BinConvTranspose2d(in_ch, out_ch, kernel_size=kernel_size, stride=stride, padding=padding, bias=False, batchnorm=batchnorm)]
+
 
         else:
             self.upconv = [
                 nn.Upsample(mode='bilinear', scale_factor=2, align_corners=False),
-                nn.Conv2d(in_ch, out_ch , kernel_size=1 , stride=1)
+                BinConv2d(in_ch, out_ch, kernel_size=1, stride=1, padding=0, bias=False, batchnorm=batchnorm)
             ]
+
 
         if batchnorm:
             self.upconv += [nn.BatchNorm2d(out_ch)]
@@ -94,7 +94,7 @@ class UNet_3D_3D(nn.Module):
         growth = 2 if joinType == "concat" else 1
         self.lrelu = nn.LeakyReLU(0.2, True)
 
-        unet_3D = importlib.import_module(".resnet_3D" , "model")
+        unet_3D = importlib.import_module(".binresnet_3D", "model")
         if n_outputs > 1:
             unet_3D.useBias = True
         self.encoder = getattr(unet_3D , block)(pretrained=False , bn=batchnorm)            
@@ -118,8 +118,9 @@ class UNet_3D_3D(nn.Module):
 
         self.outconv = nn.Sequential(
             nn.ReflectionPad2d(3),
-            nn.Conv2d(nf[3], out_channels , kernel_size=7 , stride=1, padding=0) 
-        )         
+            BinConv2d(nf[3], out_channels, kernel_size=7, stride=1, padding=0, batchnorm=False)
+        )
+     
 
     def forward(self, images):
 
