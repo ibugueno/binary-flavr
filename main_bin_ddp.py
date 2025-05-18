@@ -20,7 +20,7 @@ from torch.utils.data.distributed import DistributedSampler
 # === Helper: Checkpoint loader ===
 def load_checkpoint(args, model, optimizer, path):
     print("Loading checkpoint:", path)
-    checkpoint = torch.load(path)
+    checkpoint = torch.load(path, map_location=device)
     args.start_epoch = checkpoint['epoch'] + 1
     model.load_state_dict(checkpoint['state_dict'])
     optimizer.load_state_dict(checkpoint['optimizer'])
