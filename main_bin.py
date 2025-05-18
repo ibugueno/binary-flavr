@@ -66,7 +66,8 @@ else:
 # === Build Model ===
 print("Building model:", args.model.lower())
 model = UNet_3D_3D(args.model.lower(), n_inputs=args.nbr_frame, n_outputs=args.n_outputs, joinType=args.joinType, upmode=args.upmode)
-model = torch.nn.DataParallel(model).to(device)
+#model = torch.nn.DataParallel(model).to(device)
+model = model.to(device)
 
 # === Binarization handler ===
 bin_op = BinOp(model)
