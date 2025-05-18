@@ -253,6 +253,8 @@ def main(args):
         best_psnr = max(psnr, best_psnr)
 
         if args.local_rank == 0:
+            bin_op.restore()
+
             # === Guardar checkpoint ===
             checkpoint_data = {
                 'epoch': epoch,
