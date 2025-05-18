@@ -40,6 +40,8 @@ learn_arg.add_argument('--checkpoint_dir', type=str, default="output")
 learn_arg.add_argument("--load_from"  ,type=str , default=None)
 learn_arg.add_argument("--pretrained" , type=str,
                         help="Load from a pretrained model.")
+learn_arg.add_argument('--cuda', type=bool, default=True, help='Use CUDA')
+
 
 # Misc
 misc_arg = add_argument_group('Misc')

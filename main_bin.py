@@ -96,7 +96,8 @@ def train(args, epoch):
         gt = torch.cat(gt)
 
         loss, loss_specific = criterion(out, gt)
-        loss.backward()
+        with torch.autograd.set_detect_anomaly(True):
+            loss.backward()
 
         bin_op.restore()
         bin_op.updateBinaryGradWeight()
