@@ -17,6 +17,8 @@ from util import BinOp
 
 from torch.utils.data.distributed import DistributedSampler
 
+import os
+
 # === Helper: Checkpoint loader ===
 def load_checkpoint(args, model, optimizer, path):
     print("Loading checkpoint:", path)
@@ -31,6 +33,8 @@ def load_checkpoint(args, model, optimizer, path):
 
 # === Setup ===
 args, unparsed = config.get_args()
+print(f"[Process PID={os.getpid()}] os.environ['LOCAL_RANK'] = {os.environ.get('LOCAL_RANK')}")
+print(f"[Process PID={os.getpid()}] args.local_rank = {args.local_rank}")
 print(args)
 
 if args.num_gpu > 1:

@@ -58,9 +58,13 @@ def get_args():
     """Parses all of the arguments above"""
     args, unparsed = parser.parse_known_args()
 
-    # Detectar automáticamente el número de GPUs
+    # ¡NO SOBRESCRIBAS local_rank!
+    # Detectar automáticamente número de GPUs
     args.num_gpu = torch.cuda.device_count()
-    args.cuda = args.num_gpu > 0
+
+    # Usa el valor correcto pasado por torchrun
+    args.cuda = torch.cuda.is_available()
+
 
     if len(unparsed) > 0:
         print("Unparsed args:", unparsed)
