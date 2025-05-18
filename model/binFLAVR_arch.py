@@ -7,8 +7,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from .binresnet_3D import SEGating
 
-from binconv import BinConv2d, BinConv3d
-from binconv import BinConvTranspose2d, BinConvTranspose3d
+from .binconv import BinConv2d, BinConv3d
+from .binconv import BinConvTranspose2d, BinConvTranspose3d
 
 
 def joinTensors(X1 , X2 , type="concat"):
