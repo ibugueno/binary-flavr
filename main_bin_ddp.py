@@ -189,6 +189,8 @@ def test(args, epoch):
     model.eval()
     criterion.eval()
 
+    bin_op.binarization()  # <<<< AÑADE ESTO
+
     with torch.no_grad():
         for i, (images, gt_image) in enumerate(tqdm(test_loader)):
             images = [img.cuda() for img in images]
@@ -206,13 +208,13 @@ def test(args, epoch):
 
             myutils.eval_metrics(out, gt, psnrs, ssims)
 
+    bin_op.restore() 
+
     print(f"Loss: {losses['total'].avg:.4f}, PSNR: {psnrs.avg:.4f}, SSIM: {ssims.avg:.4f}\n")
 
     if args.local_rank == 0:
         with open(os.path.join(save_loc, 'results.txt'), 'a') as f:
             f.write(f'For epoch={epoch}\tPSNR: {psnrs.avg:.4f}, SSIM: {ssims.avg:.4f}\n')
-
-
 
 
     timestep = epoch + 1
