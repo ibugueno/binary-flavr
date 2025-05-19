@@ -25,6 +25,8 @@ from PIL import Image
 
 from torchvision.transforms.functional import to_pil_image
 
+from torch.optim.lr_scheduler import CosineAnnealingLR
+
 def save_sample_images(pred, gt, epoch, save_dir, max_samples=4):
     """Guarda algunas imágenes del resultado y ground truth"""
     os.makedirs(save_dir, exist_ok=True)
@@ -127,7 +129,8 @@ bin_op = BinOp(model)
 criterion = Loss(args)
 optimizer = Adam(model.parameters(), lr=args.lr, betas=(args.beta1, args.beta2))
 #scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=5, verbose=True)
-scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=5)
+#scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=5)
+scheduler = CosineAnnealingLR(optimizer, T_max=args.max_epoch)
 
 
 # === Training ===
@@ -272,6 +275,14 @@ def main(args):
             if is_best:
                 torch.save(checkpoint_data, os.path.join(save_loc, 'checkpoint_best.pth'))
 
+                # Guardar versión FLOAT32
+                torch.save(model.state_dict(), os.path.join(save_loc, 'model_best_fp32.pth'))
+
+                # Guardar versión BINARIZADA
+                bin_op.binarization()
+                torch.save(model.state_dict(), os.path.join(save_loc, 'model_best_bin.pth'))
+                bin_op.restore()
+
             # === Guardar métricas en CSV ===
             metrics_path = os.path.join(save_loc, 'metrics.csv')
             write_header = not os.path.exists(metrics_path)
@@ -289,7 +300,8 @@ def main(args):
                     pred_img.save(os.path.join(save_loc, "sample_outputs", f"epoch{epoch:03d}_sample{i}_pred.png"))
                     gt_img.save(os.path.join(save_loc, "sample_outputs", f"epoch{epoch:03d}_sample{i}_gt.png"))
 
-        scheduler.step(test_loss)
+        #scheduler.step(test_loss)
+        scheduler.step()
 
 
 
